@@ -45,6 +45,10 @@ uint8_t length_message = 12;
 #define DRC_S_CSN_PIN  26
 #define DRC_S_PIN 12
 
+uint8_t shutdown_channel; 
+#define SHUTDOWN_PIN 31
+
+
 static void timer_handler(nrf_timer_event_t event_type, void * p_context);
 static void spis_handler(nrfx_spis_evt_t const * p_event, void * p_context);
 void turn_off_DMD(void);
@@ -267,6 +271,7 @@ int main(void)
     //! Setup button
     setup_gpio_dt(&button, GPIO_INPUT);
     setup_button(&button, button_pressed, &cb);
+    
 
     // configure_lpcomp();
     // ! Enable peripheral interrupts
@@ -280,6 +285,10 @@ int main(void)
     //! Initialise peripherals
     nrfx_gpiote_init(GPIOTE_INTERRUPT_PRIORITY);
 
+    //! Setup for the shutdown pin to for the correct start of the DMD
+    shutdown_channel = setup_gpiote_toggle(SHUTDOWN_PIN, NRF_GPIOTE_INITIAL_VALUE_LOW);
+    k_msleep(1000);
+    nrfx_gpiote_out_task_trigger(SHUTDOWN_PIN);
     
     //! TRIGGER - Set up trigger for US_BETWEEN_BITS clock pulses
     init_timer(timer1, timer_handler, 1000000);
@@ -289,10 +298,12 @@ int main(void)
     spim_init(spim_sctrl, spim_sctrl_config, tx_drc_b_buffer, DATA_BUFFER_SIZE);
 
     setup_gpiote_toggle(CSN_PIN, NRF_GPIOTE_INITIAL_VALUE_HIGH);
+    nrfx_gpiote_out_task_trigger(CSN_PIN);
 
     #ifdef LED
     led_channel = setup_gpiote_toggle(LED_CTRL, NRF_GPIOTE_INITIAL_VALUE_HIGH);
     #endif
+
 
     // nrfx_lpcomp_enable();
     spis_init(spis1,  spis_drc_s, tx_sac_b_buffer, SAC_B_BUFFER_SIZE);
