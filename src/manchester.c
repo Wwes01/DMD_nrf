@@ -7,7 +7,7 @@ uint16_t factor_periods_length = 0;
 volatile uint16_t current_period_index = 0;
 uint32_t messages_send_started = 0;
 
-volatile bool rgb_case = false;
+volatile bool rgb_case = true;
 
 
 void construct_frame(char * msg, uint8_t len) {

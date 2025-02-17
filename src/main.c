@@ -20,6 +20,7 @@
 #include "peripheral-controllers/interfacing/uarte_controller.h"
 #include "peripheral-controllers/input-detection/lpcomp_controller.h"
 
+// Message setup
 char message[] = "Hello World!";
 uint8_t length_message = 12;
 
@@ -28,6 +29,7 @@ uint8_t length_message = 12;
 
 // #define LED
 
+// Speed configuration
 #define SINGLE_SPEED 8
 #ifdef HIGH_SPEED
 #define DOUBLE_SPEED 16
@@ -35,6 +37,7 @@ uint8_t length_message = 12;
 #define DOUBLE_SPEED 8
 #endif
 
+// GPIO Pin assignments
 #define LED_CTRL 30
 #define CSN_PIN  6
 
@@ -45,10 +48,11 @@ uint8_t length_message = 12;
 #define DRC_S_CSN_PIN  26
 #define DRC_S_PIN 12
 
-uint8_t shutdown_channel; 
-#define SHUTDOWN_PIN 31
+// GPIO setup for shutdown control
+#define LED0_NODE DT_ALIAS(led0)
+static const struct gpio_dt_spec shutdown = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
 
-
+// Function prototypes for handling timers and SPI. Also the functions to turn off/on the LED. 
 static void timer_handler(nrf_timer_event_t event_type, void * p_context);
 static void spis_handler(nrfx_spis_evt_t const * p_event, void * p_context);
 void turn_off_DMD(void);
@@ -72,6 +76,7 @@ uint8_t led_channel;
 uint8_t loadb_channel;
 uint8_t dppi_loadb_channel;
 
+// Flags to manage LED and DMD states
 bool led_paused = true;
 volatile bool dmd_paused = true;
 
@@ -168,6 +173,9 @@ void turn_off_DMD(void)
     #endif
 }
 
+/**
+ * Turns on all peripherals that are used to send signals to DMD.
+*/
 void turn_on_DMD(void)
 {
     if(!dmd_paused) return;
@@ -253,6 +261,16 @@ void turn_DMD_fully_off(void)
 
 int main(void)
 {
+    //! Setup for the shutdown pin to for the correct start of the DMD
+    // k_msleep(2000);
+    // gpio_pin_configure_dt(&shutdown, GPIO_OUTPUT_ACTIVE);
+    // gpio_pin_set_dt(&shutdown, 1); //Sets the output to ground
+    // k_msleep(2000);
+    // gpio_pin_toggle_dt(&shutdown); //Turns the power supplies on
+
+    // while(1) {
+
+    // }
     
     //! Set clock to high frequency
     #ifdef HIGH_SPEED
@@ -272,7 +290,6 @@ int main(void)
     setup_gpio_dt(&button, GPIO_INPUT);
     setup_button(&button, button_pressed, &cb);
     
-
     // configure_lpcomp();
     // ! Enable peripheral interrupts
     #if defined(__ZEPHYR__)
@@ -284,11 +301,6 @@ int main(void)
 
     //! Initialise peripherals
     nrfx_gpiote_init(GPIOTE_INTERRUPT_PRIORITY);
-
-    //! Setup for the shutdown pin to for the correct start of the DMD
-    shutdown_channel = setup_gpiote_toggle(SHUTDOWN_PIN, NRF_GPIOTE_INITIAL_VALUE_LOW);
-    k_msleep(1000);
-    nrfx_gpiote_out_task_trigger(SHUTDOWN_PIN);
     
     //! TRIGGER - Set up trigger for US_BETWEEN_BITS clock pulses
     init_timer(timer1, timer_handler, 1000000);
