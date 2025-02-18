@@ -48,9 +48,7 @@ uint8_t length_message = 12;
 #define DRC_S_CSN_PIN  26
 #define DRC_S_PIN 12
 
-// GPIO setup for shutdown control
-#define LED0_NODE DT_ALIAS(led0)
-static const struct gpio_dt_spec shutdown = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
+#define Shutdown1 28
 
 // Function prototypes for handling timers and SPI. Also the functions to turn off/on the LED. 
 static void timer_handler(nrf_timer_event_t event_type, void * p_context);
@@ -85,6 +83,17 @@ bool end_of_message = false;
 #define SW0_NODE	DT_ALIAS(sw0)
 static struct gpio_dt_spec button = GPIO_DT_SPEC_GET_OR(SW0_NODE, gpios, {0});
 static struct gpio_callback cb;
+
+#define LED0_NODE DT_ALIAS(led0)
+static const struct gpio_dt_spec led1 = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
+
+#define LED1_NODE DT_ALIAS(led1)
+static const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(LED1_NODE, gpios);
+
+#define LED2_NODE DT_ALIAS(led2)
+static const struct gpio_dt_spec led3 = GPIO_DT_SPEC_GET(LED2_NODE, gpios);
+
+
 
 
 /**
@@ -261,16 +270,58 @@ void turn_DMD_fully_off(void)
 
 int main(void)
 {
-    //! Setup for the shutdown pin to for the correct start of the DMD
-    // k_msleep(2000);
-    // gpio_pin_configure_dt(&shutdown, GPIO_OUTPUT_ACTIVE);
-    // gpio_pin_set_dt(&shutdown, 1); //Sets the output to ground
-    // k_msleep(2000);
-    // gpio_pin_toggle_dt(&shutdown); //Turns the power supplies on
+    // //! Setup for the shutdown pin to for the correct start of the DMD
 
-    // while(1) {
+    int ret;
 
+	if (!gpio_is_ready_dt(&led1)) {
+		return 0;
+	}
+
+	ret = gpio_pin_configure_dt(&led1, GPIO_OUTPUT_ACTIVE);
+	if (ret < 0) {
+		return 0;
+	}
+
+    if (!gpio_is_ready_dt(&led2)) {
+		return 0;
+	}
+
+	ret = gpio_pin_configure_dt(&led2, GPIO_OUTPUT_ACTIVE);
+	if (ret < 0) {
+		return 0;
+	}
+
+    if (!gpio_is_ready_dt(&led3)) {
+		return 0;
+	}
+
+	ret = gpio_pin_configure_dt(&led3, GPIO_OUTPUT_ACTIVE);
+	if (ret < 0) {
+		return 0;
+	}
+
+
+    // Toggle the GPIO pin in a loop
+    // while (1) {
+    //     ret = gpio_pin_toggle_dt(&led1);
+	// 	if (ret < 0) {
+	// 		return 0;
+	// 	}
+
+    //     ret = gpio_pin_toggle_dt(&led2);
+	// 	if (ret < 0) {
+	// 		return 0;
+	// 	}
+
+    //     ret = gpio_pin_toggle_dt(&led3);
+	// 	if (ret < 0) {
+	// 		return 0;
+	// 	}
+
+    //     k_msleep(100);  // 1-second delay
     // }
+
     
     //! Set clock to high frequency
     #ifdef HIGH_SPEED
