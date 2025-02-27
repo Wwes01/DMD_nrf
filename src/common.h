@@ -23,8 +23,7 @@
 // HIGH_SPEED: for speeds that require a higher clock rate.
 // #define HIGH_SPEED
 
-// #define US_BETWEEN_BITS 100
-#define US_BETWEEN_BITS 1000
+#define US_BETWEEN_BITS 500
 
 #define NR_PULSES_BETWEEN_CONSECUTIVE_MESSAGES 6 // ! Needs to be even !
 #define US_PULSES_BETWEEN_CONSECUTIVE_MESSAGES (2*US_BETWEEN_BITS)

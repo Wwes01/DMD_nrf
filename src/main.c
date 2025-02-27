@@ -46,7 +46,7 @@ uint8_t length_message = 12;
 
 #define DRC_S_PIN_CLK  25
 #define DRC_S_CSN_PIN  26
-#define DRC_S_PIN 12
+#define DRC_S_PIN 11
 
 #define Shutdown1 28
 
@@ -85,15 +85,13 @@ static struct gpio_dt_spec button = GPIO_DT_SPEC_GET_OR(SW0_NODE, gpios, {0});
 static struct gpio_callback cb;
 
 #define LED0_NODE DT_ALIAS(led0)
-static const struct gpio_dt_spec led1 = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
+static const struct gpio_dt_spec shdn1 = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
 
 #define LED1_NODE DT_ALIAS(led1)
-static const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(LED1_NODE, gpios);
+static const struct gpio_dt_spec shdn2 = GPIO_DT_SPEC_GET(LED1_NODE, gpios);
 
 #define LED2_NODE DT_ALIAS(led2)
-static const struct gpio_dt_spec led3 = GPIO_DT_SPEC_GET(LED2_NODE, gpios);
-
-
+static const struct gpio_dt_spec shdn3 = GPIO_DT_SPEC_GET(LED2_NODE, gpios);
 
 
 /**
@@ -268,61 +266,65 @@ void turn_DMD_fully_off(void)
     nrfx_gpiote_uninit();
 }
 
-int main(void)
-{
-    // //! Setup for the shutdown pin to for the correct start of the DMD
-
+void Power_up_DMD_sequence(void) {
     int ret;
 
-	if (!gpio_is_ready_dt(&led1)) {
+    // Initialize the shutdown pins
+    if (!gpio_is_ready_dt(&shdn1)) {
 		return 0;
 	}
 
-	ret = gpio_pin_configure_dt(&led1, GPIO_OUTPUT_ACTIVE);
+	ret = gpio_pin_configure_dt(&shdn1, GPIO_OUTPUT_ACTIVE);
 	if (ret < 0) {
 		return 0;
 	}
 
-    if (!gpio_is_ready_dt(&led2)) {
+    if (!gpio_is_ready_dt(&shdn2)) {
 		return 0;
 	}
 
-	ret = gpio_pin_configure_dt(&led2, GPIO_OUTPUT_ACTIVE);
+	ret = gpio_pin_configure_dt(&shdn2, GPIO_OUTPUT_ACTIVE);
 	if (ret < 0) {
 		return 0;
 	}
 
-    if (!gpio_is_ready_dt(&led3)) {
+    if (!gpio_is_ready_dt(&shdn3)) {
 		return 0;
 	}
-
-	ret = gpio_pin_configure_dt(&led3, GPIO_OUTPUT_ACTIVE);
+    ret = gpio_pin_configure_dt(&shdn3, GPIO_OUTPUT_ACTIVE);
 	if (ret < 0) {
 		return 0;
 	}
 
+    if (ret < 0) {
+		return 0;
+	}
 
-    // Toggle the GPIO pin in a loop
-    // while (1) {
-    //     ret = gpio_pin_toggle_dt(&led1);
-	// 	if (ret < 0) {
-	// 		return 0;
-	// 	}
+    // Wait till VCC is stable before activating the shutdown pins
+    k_msleep(2000);
 
-    //     ret = gpio_pin_toggle_dt(&led2);
-	// 	if (ret < 0) {
-	// 		return 0;
-	// 	}
+    ret = gpio_pin_toggle_dt(&shdn1);
+    if (ret < 0) {
+        return 0;
+    }
 
-    //     ret = gpio_pin_toggle_dt(&led3);
-	// 	if (ret < 0) {
-	// 		return 0;
-	// 	}
+    ret = gpio_pin_toggle_dt(&shdn2);
+    if (ret < 0) {
+        return 0;
+    }
 
-    //     k_msleep(100);  // 1-second delay
-    // }
+    ret = gpio_pin_toggle_dt(&shdn3);
+    if (ret < 0) {
+        return 0;
+    }
 
-    
+    // Wait till the DMD is correctly started before transmitting data
+    k_msleep(3000);
+}
+
+int main(void)
+{
+
     //! Set clock to high frequency
     #ifdef HIGH_SPEED
     nrfx_clock_divider_set(NRF_CLOCK_DOMAIN_HFCLK, NRF_CLOCK_HFCLK_DIV_1);
@@ -332,6 +334,9 @@ int main(void)
     //! Start User Interface
     start_uarte();
     #endif
+
+    // //! Setup for the shutdown pin to for the correct start of the DMD
+    Power_up_DMD_sequence();
 
     //! Construct frame, and shift buffers
     construct_frame(message, length_message);
@@ -355,18 +360,13 @@ int main(void)
     
     //! TRIGGER - Set up trigger for US_BETWEEN_BITS clock pulses
     init_timer(timer1, timer_handler, 1000000);
-    set_timer(timer_trigger_dmd_toggle, US_BETWEEN_BITS, true); //TODO: test if i can remove it
+    set_timer(timer_trigger_dmd_toggle, US_BETWEEN_BITS, true);
 
     //! SCTRL - SPIM4
     spim_init(spim_sctrl, spim_sctrl_config, tx_drc_b_buffer, DATA_BUFFER_SIZE);
 
     setup_gpiote_toggle(CSN_PIN, NRF_GPIOTE_INITIAL_VALUE_HIGH);
     nrfx_gpiote_out_task_trigger(CSN_PIN);
-
-    #ifdef LED
-    led_channel = setup_gpiote_toggle(LED_CTRL, NRF_GPIOTE_INITIAL_VALUE_HIGH);
-    #endif
-
 
     // nrfx_lpcomp_enable();
     spis_init(spis1,  spis_drc_s, tx_sac_b_buffer, SAC_B_BUFFER_SIZE);
@@ -386,6 +386,7 @@ int main(void)
     rgb_c[2] = 0;
     rgb_c[3] = 0;
 
+    // If RGB setting is not on it will just sleep all the time (Except for all the interrupts)
     while(!rgb_case) {
         k_msleep(2000);
     }
