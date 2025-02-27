@@ -2,10 +2,10 @@ extern "C" {
 #include <correct.h>
 }
 
-
 #define FAST_LIB
 
 #ifdef FAST_LIB
+
 #include <DueAdcFast.h>
 DueAdcFast DueAdcF(1024);
 void ADC_Handler() {
@@ -16,14 +16,11 @@ void ADC_Handler() {
 
 const char* WANTED_PAYLOAD = "Hello World!";
 const uint8_t WANTED_LENGTH = 12;
-
-// const char* WANTED_PAYLOAD = "Testing right now!";
-// const uint8_t WANTED_LENGTH = 18;
 uint8_t BYTES_RS = 4;
 char WANTED_RS[18];
 
 #define DEBUG
-#define PERIOD 500
+#define PERIOD 100
 
 #ifndef DEBUG
 #define PAYLOAD_COUNTS 500
