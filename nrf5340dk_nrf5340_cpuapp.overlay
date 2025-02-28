@@ -68,15 +68,15 @@
 
 / {
     aliases {
-            led0 = &myled0;
-            led1 = &myled1;
-            led2 = &myled2;
+            shut1 = &myled0;
+            shut2 = &myled1;
+            shut3 = &myled2;
     };
 
     leds {
             compatible = "gpio-leds";
             myled0: led_0 {
-                    gpios = <&gpio0 28 GPIO_ACTIVE_LOW>;
+                    gpios = <&gpio0 31 GPIO_ACTIVE_LOW>;
             };
             myled1: led_1 {
                 gpios = <&gpio0 30 GPIO_ACTIVE_LOW>;

@@ -46,9 +46,9 @@ uint8_t length_message = 12;
 
 #define DRC_S_PIN_CLK  25
 #define DRC_S_CSN_PIN  26
-#define DRC_S_PIN 11
+#define DRC_S_PIN 12
 
-#define Shutdown1 28
+#define Shutdown1 31
 
 // Function prototypes for handling timers and SPI. Also the functions to turn off/on the LED. 
 static void timer_handler(nrf_timer_event_t event_type, void * p_context);
@@ -84,14 +84,14 @@ bool end_of_message = false;
 static struct gpio_dt_spec button = GPIO_DT_SPEC_GET_OR(SW0_NODE, gpios, {0});
 static struct gpio_callback cb;
 
-#define LED0_NODE DT_ALIAS(led0)
-static const struct gpio_dt_spec shdn1 = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
+#define SHUT1 DT_ALIAS(shut1)
+static const struct gpio_dt_spec shdn1 = GPIO_DT_SPEC_GET(SHUT1, gpios);
 
-#define LED1_NODE DT_ALIAS(led1)
-static const struct gpio_dt_spec shdn2 = GPIO_DT_SPEC_GET(LED1_NODE, gpios);
+#define SHUT2 DT_ALIAS(shut2)
+static const struct gpio_dt_spec shdn2 = GPIO_DT_SPEC_GET(SHUT2, gpios);
 
-#define LED2_NODE DT_ALIAS(led2)
-static const struct gpio_dt_spec shdn3 = GPIO_DT_SPEC_GET(LED2_NODE, gpios);
+#define SHUT3 DT_ALIAS(shut3)
+static const struct gpio_dt_spec shdn3 = GPIO_DT_SPEC_GET(SHUT3, gpios);
 
 
 /**
@@ -119,15 +119,6 @@ static void timer_handler(nrf_timer_event_t event_type, void * p_context)
     if(event_type == NRF_TIMER_EVENT_COMPARE0)  
     {
         nrfx_timer_extended_compare(&timer_trigger_dmd_toggle.timer, NRF_TIMER_CC_CHANNEL0, factor_periods[current_period_index], NRF_TIMER_SHORT_COMPARE0_CLEAR_MASK, true);   
-
-        // Messag paused is for when its too dark
-        // if((end_of_message || messages_paused)) {
-        //     if (dmd_on && dmd_paused) {
-        //         turn_on_DMD();
-        //     } else if(!dmd_on && !dmd_paused) {
-        //         turn_off_DMD();
-        //     } 
-        // }
         end_of_message = toggle_dmd(messages_paused);
     }
 }
@@ -154,30 +145,8 @@ void turn_off_DMD(void)
     // //! DRC_STROBE - SPIM4 + DPPI + TIMER
     nrfx_spim_abort(&spim_sctrl);
     nrfx_gppi_channel_endpoints_clear(dppi_loadb_channel, nrfx_spim_start_task_address_get(&spim_sctrl), nrfx_timer_event_address_get(&timer1, NRF_TIMER_EVENT_COMPARE0));
-
-    #ifdef LED
-    if(led_paused)
-    {
-        //! Disconnect LED from DRC_B or DRC_S and disable GPIOTE task, turn off timer
-        nrfx_gpiote_out_task_disable(LED_CTRL);
-        nrfx_gppi_channel_endpoints_clear(dppi_channel_spi, nrfx_gpiote_set_task_address_get(CSN_PIN), nrfx_spim_end_event_address_get(&spim_sctrl));
-        disable_dppi(dppi_channel_spi, nrfx_gpiote_out_task_address_get(LED_CTRL), nrfx_spim_start_task_address_get(&spim_sctrl));
-        disable_dppi(dppi_loadb_channel, nrfx_gpiote_clr_task_address_get(CSN_PIN), nrfx_spim_start_task_address_get(&spim_sctrl));
-    }
-    else
-    {
-        //! Disconnect LED from DRC_S or DRC_B and connect it to timer, leave timer on
-        nrfx_gppi_channel_endpoints_clear(dppi_loadb_channel, nrfx_gpiote_clr_task_address_get(CSN_PIN), nrfx_spim_start_task_address_get(&spim_sctrl));
-        nrfx_gppi_channel_endpoints_clear(dppi_channel_spi, nrfx_gpiote_out_task_address_get(LED_CTRL), nrfx_spim_start_task_address_get(&spim_sctrl));
-        disable_dppi(dppi_channel_spi, nrfx_gpiote_set_task_address_get(CSN_PIN), nrfx_spim_end_event_address_get(&spim_sctrl));
-        setup_dppi(dppi_loadb_channel, nrfx_gpiote_out_task_address_get(LED_CTRL), nrfx_timer_event_address_get(&timer1, NRF_TIMER_EVENT_COMPARE0));
-
-        if(!nrfx_timer_is_enabled(&timer1)) nrfx_timer_enable(&timer1);
-    } 
-    #else
     disable_dppi(dppi_channel_spi, nrfx_gpiote_set_task_address_get(CSN_PIN), nrfx_spim_end_event_address_get(&spim_sctrl));
     disable_dppi(dppi_loadb_channel, nrfx_gpiote_clr_task_address_get(CSN_PIN), nrfx_spim_start_task_address_get(&spim_sctrl));
-    #endif
 }
 
 /**
@@ -187,19 +156,6 @@ void turn_on_DMD(void)
 {
     if(!dmd_paused) return;
     dmd_paused = false;
-
-    #ifdef LED
-    if(led_paused) 
-    {
-        //! connect LED to end of DRC_B or DRC_S 
-        nrfx_gpiote_out_task_enable(LED_CTRL);
-    }
-    else 
-    {
-        //! Disconnect LED from Timer, connect to DRC_B or DRC_S instead
-        nrfx_gppi_channel_endpoints_clear(dppi_loadb_channel, nrfx_gpiote_out_task_address_get(LED_CTRL),  nrfx_timer_event_address_get(&timer1, NRF_TIMER_EVENT_COMPARE0));
-    }
-    #endif
 
     set_timer(timer_trigger_dmd_toggle, US_BETWEEN_BITS, true);
 
@@ -214,38 +170,8 @@ void turn_on_DMD(void)
     //! DRC_BUS - SPIS + DPPI + GPIOTE
     nrfx_gpiote_out_task_enable(CSN_PIN);
 
-    #ifdef LED
-    setup_dppi(dppi_channel_spi, nrfx_gpiote_out_task_address_get(LED_CTRL), nrfx_spim_end_event_address_get(&spim_sctrl));
-    #endif
-
     if(!nrfx_timer_is_enabled(&timer1)) nrfx_timer_enable(&timer1);
 }
-
-
-#ifdef LED
-void turn_off_LED(void)
-{
-    if(!dmd_on) 
-    {
-        nrfx_timer_pause(&timer1);
-        nrfx_timer_disable(&timer1);
-
-        nrfx_gpiote_out_task_disable(LED_CTRL);
-        disable_dppi(dppi_loadb_channel, nrfx_gpiote_out_task_address_get(LED_CTRL), nrfx_spim_start_task_address_get(&spim_sctrl));
-        nrfx_gpiote_channel_free(dppi_loadb_channel);
-    }
-}
-
-void turn_on_LED(void)
-{
-    if(!dmd_on) 
-    {
-        nrfx_gpiote_out_task_enable(LED_CTRL);
-        setup_dppi(dppi_loadb_channel, nrfx_gpiote_out_task_address_get(LED_CTRL), nrfx_timer_event_address_get(&timer1, NRF_TIMER_EVENT_COMPARE0));
-        if(!nrfx_timer_is_enabled(&timer1)) nrfx_timer_enable(&timer1);
-    }
-}
-#endif
 
 void turn_DMD_fully_off(void)
 {
@@ -301,7 +227,7 @@ void Power_up_DMD_sequence(void) {
 	}
 
     // Wait till VCC is stable before activating the shutdown pins
-    k_msleep(2000);
+    k_msleep(5000);
 
     ret = gpio_pin_toggle_dt(&shdn1);
     if (ret < 0) {
@@ -319,11 +245,14 @@ void Power_up_DMD_sequence(void) {
     }
 
     // Wait till the DMD is correctly started before transmitting data
-    k_msleep(3000);
+    k_msleep(5000);
 }
 
 int main(void)
 {
+
+    // //! Setup for the shutdown pin to for the correct start of the DMD
+    Power_up_DMD_sequence();
 
     //! Set clock to high frequency
     #ifdef HIGH_SPEED
@@ -333,10 +262,7 @@ int main(void)
     #ifdef USER_INTERFACE
     //! Start User Interface
     start_uarte();
-    #endif
-
-    // //! Setup for the shutdown pin to for the correct start of the DMD
-    Power_up_DMD_sequence();
+    #endif   
 
     //! Construct frame, and shift buffers
     construct_frame(message, length_message);
@@ -372,11 +298,7 @@ int main(void)
     spis_init(spis1,  spis_drc_s, tx_sac_b_buffer, SAC_B_BUFFER_SIZE);
     dppi_loadb_channel = allocate_dppi_channel();
     dppi_channel_spi = allocate_dppi_channel();
-    if(dmd_on) turn_on_DMD();
-    #ifdef LED
-    turn_on_LED();
-    led_paused = false;
-    #endif    
+    if(dmd_on) turn_on_DMD();  
 
     k_msleep(1000);
     // messages_paused = false;

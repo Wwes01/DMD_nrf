@@ -20,7 +20,7 @@ uint8_t BYTES_RS = 4;
 char WANTED_RS[18];
 
 #define DEBUG
-#define PERIOD 100
+#define PERIOD 500
 
 #ifndef DEBUG
 #define PAYLOAD_COUNTS 500
