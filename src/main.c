@@ -48,6 +48,7 @@ uint8_t length_message = 12;
 #define DRC_S_CSN_PIN  26
 #define DRC_S_PIN 12
 
+// Shutdown pin
 #define Shutdown1 31
 
 // Function prototypes for handling timers and SPI. Also the functions to turn off/on the LED. 

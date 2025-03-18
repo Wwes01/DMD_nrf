@@ -20,7 +20,9 @@ uint8_t BYTES_RS = 4;
 char WANTED_RS[18];
 
 #define DEBUG
-#define PERIOD 500
+
+//Period of the VLC connection, dont forget to match it with the NRF
+#define PERIOD 1000
 
 #ifndef DEBUG
 #define PAYLOAD_COUNTS 500
